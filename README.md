@@ -9,9 +9,35 @@ This project performs dosimetric analysis of medical images (PET/CT) using Monte
 ## Project Structure
 
 ```
-├── version3.py                          # Main analysis script (Google Colab notebook converted)
-├── Obtencion_Kernel_limpio.ipynb       # Monte Carlo kernel generation (using LegPy)
-└── README.md                            # This file
+# Recommended Repository Structure
+
+```plaintext
+PET_Image_Dosimetry/
+│
+├── dicom_processing/
+│   ├── __init__.py
+│   ├── dicom_reader.py
+│   └── obtaining_Activity.py
+│  
+│
+├── kernel_generation/
+│   ├── __init__.py
+│   ├── kernel_generator.py
+│   └── utils.py
+│
+
+├── dosimetry_calculations/
+│   ├── __init__.py
+│   ├── dose_calculator.py
+│   └── utils.py
+│
+├── tests/
+│   ├── test_kernel.py
+│   ├── test_dicom_processing.py
+│   └── test_dosimetry.py
+│
+├── requirements.txt
+└── README.md
 ```
 
 ## Features
