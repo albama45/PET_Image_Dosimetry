@@ -1,10 +1,10 @@
 # PET_Image_Dosimetry
 
-# PET Dosimetry Analysis using Monte Carlo Simulations
+# PET Dosimetry Analysis using LegPy Simulations
 
 ## Overview
 
-This project performs dosimetric analysis of medical images (PET/CT) using Monte Carlo simulations for photon dose deposition. It processes DICOM files, simulates radiation transport, and calculates absorbed dose distributions in tissue.
+This project performs dosimetric analysis of medical images (PET/CT) using LegPy (Monte Carlo based algorithm) simulations for photon dose deposition. It processes DICOM files, simulates radiation transport, and calculates absorbed dose distributions in tissue.
 
 ## Project Structure
 
@@ -52,6 +52,7 @@ PET_Image_Dosimetry/
 2. **Activity Calculation**
    - Converts raw pixel values to activity (Bq/ml) using DICOM rescale factors
    - Handles radiopharmaceutical information (isotope identification)
+   - Converts activity to SUV, using information from the DICOM header
 
 3. **Dose Deposition**
    - Convolution of activity maps with radiation transport kernels
@@ -61,7 +62,7 @@ PET_Image_Dosimetry/
 4. **Visualization**
    - Multi-plane visualization (axial, coronal, sagittal)
    - Linear and logarithmic scaling options
-   - Anatomical region zoom capabilities
+
 
 ### Kernel Generation (`Obtencion_Kernel_limpio.ipynb`)
 
@@ -95,7 +96,7 @@ Key parameters:
 - `Nx`, `Ny`, `Nz`: Number of voxels per dimension
 - `n_part`: Number of photon histories (10M recommended for accuracy)
 
-Output: `Kernel_fotones_2.pkl` containing dose deposition matrix
+Output: `Kernel_fotones.pkl` containing dose deposition matrix
 
 ### 2. Dosimetry Analysis
 
@@ -106,7 +107,7 @@ python version3.py
 Required inputs:
 - PET DICOM series (zip file: `DatosPET1.zip`)
 - CT DICOM series (zip file: `DatosCT.zip`)
-- Pre-generated kernel file (`Kernel_fotones_2.pkl`)
+- Pre-generated kernel file (`Kernel_fotones.pkl`)
 
 ## Key Physical Concepts
 
