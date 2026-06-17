@@ -9,7 +9,7 @@ This project performs dosimetric analysis of medical images (PET/CT) using LegPy
 ## Project Structure
 
 ```
-# Recommended Repository Structure
+# Repository Structure
 
 ```plaintext
 PET_Image_Dosimetry/
@@ -40,36 +40,65 @@ PET_Image_Dosimetry/
 └── README.md
 ```
 
-## Features
-
-### Main Script (`version3.py`)
-
-1. **DICOM Image Processing**
-   - Loads PET and CT image series from DICOM files
-   - Reconstructs 3D volumetric data from 2D slices
-   - Extracts physical parameters (pixel spacing, slice thickness)
-
-2. **Activity Calculation**
-   - Converts raw pixel values to activity (Bq/ml) using DICOM rescale factors
-   - Handles radiopharmaceutical information (isotope identification)
-   - Converts activity to SUV, using information from the DICOM header
-
-3. **Dose Deposition**
-   - Convolution of activity maps with radiation transport kernels
-   - Accounts for photon and alpha particle contributions
-   - Outputs dose in Gray (Gy)
-
-4. **Visualization**
-   - Multi-plane visualization (axial, coronal, sagittal)
-   - Linear and logarithmic scaling options
 
 
-### Kernel Generation (`Obtencion_Kernel_limpio.ipynb`)
+## Modules
 
-- Monte Carlo simulations using LegPy (Legendre-based physics simulation)
-- Simulates photon transport from positron-electron annihilation
-- Generates dose deposition matrices for isotropic point sources
-- Saves kernels as pickle files for reuse
+### 1. DICOM Processing
+
+The `dicom_processing` module contains the tools required to load and process PET and CT DICOM image series.
+
+Main functionalities include:
+
+- Reading DICOM image data.
+- Reconstructing 3D volumetric arrays from 2D image slices.
+- Extracting relevant physical parameters, such as pixel spacing, slice thickness and image metadata.
+- Preparing image data for subsequent activity and dose calculations.
+
+Relevant files:
+
+- `dicom_reader.py`: handles DICOM image loading and reconstruction.
+- `obtaining_Activity.py`: extracts or calculates activity-related information from PET DICOM data.
+
+### 2. Dosimetry Calculations
+
+The `dosimetry_calculations` module contains the code used to estimate absorbed dose from PET-derived activity distributions.
+
+Main functionalities include:
+
+- Converting PET image values into activity values.
+- Using DICOM rescale factors and radiopharmaceutical information.
+- Estimating absorbed dose from activity maps.
+- Returning dose values in Gray (Gy).
+
+Relevant file:
+
+- `dose_calculator.py`: performs the main dose calculation workflow.
+
+### 3. Kernel Generation
+
+The `kernel_generation` module contains the tools used to generate and manage dose deposition kernels.
+
+Main functionalities include:
+
+- Generating radiation transport kernels.
+- Constructing dose deposition matrices.
+- Preparing kernels for convolution with activity maps.
+- Saving kernels for later reuse in dosimetry calculations.
+
+Relevant file:
+
+- `kernel_generator.py`: generates and stores dose deposition kernels.
+
+### 4. Testing
+
+The `testing` folder contains scripts used to test the main components of the project, incluiding cross-checks of the results.
+
+Relevant files:
+
+
+- `test_dosimetry.py`: tests of dose calculation functions; includes the calculation of the dose at specific regions.
+- `tests_kernel.py`: tests kernel generation and kernel handling.
 
 ## Dependencies
 
@@ -85,29 +114,93 @@ LegPy            # Monte Carlo simulations (git clone)
 
 ## Usage
 
-### 1. Kernel Generation
+The repository is organised as a modular workflow for PET image dosimetry. The general process consists of loading PET and CT DICOM image data, extracting activity information, generating or loading a dose deposition kernel, and calculating the absorbed dose distribution.
 
-```bash
-jupyter notebook Obtencion_Kernel_limpio.ipynb
+### 1. DICOM Image Processing
+
+The first step is to load the PET and CT DICOM image series and reconstruct them as 3D volumetric arrays.
+
+```python
+from dicom_processing.dicom_reader import *
 ```
 
-Key parameters:
-- `Ladox`, `Ladoy`, `Ladoz`: Voxel dimensions (cm)
-- `Nx`, `Ny`, `Nz`: Number of voxels per dimension
-- `n_part`: Number of photon histories (10M recommended for accuracy)
+This module is used to:
 
-Output: `Kernel_fotones.pkl` containing dose deposition matrix
+- Read PET and CT DICOM files.
+- Sort 2D DICOM slices.
+- Reconstruct volumetric image data.
+- Extract image metadata such as pixel spacing, slice thickness and image dimensions.
+- Prepare the image data for activity and dose calculations.
 
-### 2. Dosimetry Analysis
+### 2. Activity Calculation
 
-```bash
-python version3.py
+The PET image values are converted into activity information using the corresponding DICOM metadata.
+
+```python
+from dicom_processing.obtaining_Activity import *
 ```
 
-Required inputs:
-- PET DICOM series (zip file: `DatosPET1.zip`)
-- CT DICOM series (zip file: `DatosCT.zip`)
-- Pre-generated kernel file (`Kernel_fotones.pkl`)
+This step is used to:
+
+- Convert PET voxel values into activity concentration.
+- Apply DICOM rescale factors.
+- Extract radiopharmaceutical information from the DICOM header.
+- Generate the activity map required for dose calculation.
+
+### 3. Kernel Generation
+
+Dose deposition kernels are generated or loaded before performing the dosimetry calculation.
+
+```python
+from kernel_generation.kernel_generator import *
+```
+
+This module is used to:
+
+- Generate dose deposition kernels.
+- Define voxel dimensions and kernel size.
+- Store kernels for later reuse.
+- Prepare kernels for convolution with activity maps.
+
+### 4. Dose Calculation
+
+The absorbed dose distribution is calculated by combining the activity map with the dose deposition kernel.
+
+```python
+from dosimetry_calculations.dose_calculator import *
+```
+
+This step is used to:
+
+- Load or receive the activity distribution.
+- Apply the dose deposition kernel.
+- Estimate the absorbed dose distribution.
+- Return dose values in Gray (Gy).
+
+### 5. Testing
+
+The main components of the project can be tested using the scripts located in the `testing` folder.
+
+```bash
+python testing/test_dicom_processing.py
+python testing/test_dosimetry.py
+python testing/tests_kernel.py
+```
+
+These scripts are used to check the DICOM processing, activity calculation, kernel generation and dose calculation modules.
+
+## Required Inputs
+
+The workflow generally requires:
+
+- A PET DICOM image series.
+- A CT DICOM image series.
+- Relevant DICOM metadata, including voxel dimensions and radiopharmaceutical information.
+- A generated or pre-generated dose deposition kernel.
+
+## Output
+
+The main output of the workflow is an estimated absorbed dose distribution expressed in Gray (Gy).
 
 ## Key Physical Concepts
 
