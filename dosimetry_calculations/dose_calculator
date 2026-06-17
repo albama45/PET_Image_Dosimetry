@@ -1,1 +1,40 @@
+#función para cargar el kernel (dosis depositada por los fotones de aniquilación electrón-positrón)
+
+def Pickle_load(ruta,actividad):
+  #ruta es la ruta hasta el archivo de la matriz
+  #actividad es la actividad deseada, se usa para reescalar la matriz guardada
+
+  with open(ruta, 'rb') as f:
+    datos_recuperados = pickle.load(f)
+
+  matriz=datos_recuperados[0]
+  actividad_original=datos_recuperados[1]
+
+  matriz_reescalada=matriz*actividad/actividad_original # se reescala la matriz para obtener la actividad deseada
+  return matriz_reescalada
+-------------
+
+#loading the Kernel
+
+K = Pickle_load('Kernel_fotones_2.1.pkl',1)
+
+--------------------------------
+#Dosimetry calculation:
+
+#cálculo de la dosis depositada
+
+V_vox = v_size[0]*v_size[1]*v_size[2]*0.001 # volumen del voxel en ml
+m_vox = V_vox*0.001 # masa del voxel en kg
+t = 16*60 #tiempo en s (de toma de imagen)
+
+a = 1.6*10**(-13) # [J]/[MeV]
+
+Desint = Activity*t*V_vox #[desintegraciones/sml]*[s]*[ml]=[desintegraciones]
+
+Dose_alpha = convolve(Desint, 2*K, mode="reflect") # [desintegraciones]*[MeV/voxel desintegración]=[MeV/voxel]
+Dose_alpha = Dose_alpha*a/m_vox #[MeV/voxel]*[J/MeV]/[kg/voxel]
+Dose_p = a*Desint/m_vox
+
+Dose = Dose_alpha + Dose_p
+
 
