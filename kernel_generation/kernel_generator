@@ -1,1 +1,75 @@
+#Libraries:
+
+!git clone https://github.com/JaimeRosado/LegPy.git
+import sys
+#sys.path.insert(0,'/content/LegPy')
+sys.path.insert(0,'LegPy')
+import LegPy as lpy
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pickle
+
+#----------------------------------------
+
+#LegPy simulation:
+
+#suponemos que el medio es agua
+medium = lpy.Medium(name='Water, Liquid')
+#Hay que corregir esto para que el voxel del kernel tenga las mismas dimensiones que el voxel de la imagen. también quiero hacer que la fuente quede en el centro de un voxel.
+
+Ladox= 0.53067*29   #cm
+Ladoy= Ladox
+Ladoz= 0.33750001*29
+Nx= 29 #número de voxeles en x (y, z), 1 voxel casa Lado/Nx cm (si son impares creo que debería quedar la fuente en un voxel?)
+Ny= 29
+Nz= 29
+
+#pruebo con voxeles de 1 cm
+
+geometry = lpy.Geometry(name='orthohedron', x=Ladox, y=Ladoy, z=Ladoz, n_x=Nx, n_y=Ny, n_z=Nz) #hay que redefinir geometry antes de cada simulación para que no sobreescriba el resultado
+
+# Emisión isótropa en el centro del cubo (name y p_in)
+
+#-Fotones (aniquilación)
+#-JLC 22/02 Te sugiero generar muchos máss fotones 100.000 al menos (y para eso mira el siguiente comentario)
+
+beam2 = lpy.Beam(name = 'isotropic', particle='photon', p_in = np.array ([0., 0., Ladoz/2]))
+spectrum2 = lpy.Spectrum(name = 'mono', E = .511)
+result2 = lpy.MC(medium, geometry, spectrum2, beam2,n_part=10000000)
+
+#-----------------------------------------
+
+
+#functions to store and charge data:
+
+def Pickle_save(nombre,Geometry,actividad):
+  #nombre es el nombre que tendrá el archivo final
+  #geometry es la clase geometry definada para legpy tras la simulación.
+  #actividad es la actividad para la que se ha simulado
+
+  matrix=Geometry.voxelization.matrix
+  datos=[matrix,actividad] # Se guarda la matriz e energía depositada y la actividad a la que se ha simulado
+  with open(nombre+'.pkl', 'wb') as f:
+    pickle.dump(datos, f)
+
+
+
+def Pickle_load(ruta,actividad):
+  #ruta es la ruta hasta el archivo de la matriz
+  #actividad es la actividad deseada, se usa para reescalar la matriz guardada
+
+  with open(ruta, 'rb') as f:
+    datos_recuperados = pickle.load(f)
+
+  matriz=datos_recuperados[0]
+  actividad_original=datos_recuperados[1]
+
+  matriz_reescalada=matriz*actividad/actividad_original # se reescala la matriz para obtener la actividad deseada
+  return matriz_reescalada
+
+#---------------------------
+
+Pickle_save(nombre='Kernel_fotones',Geometry=geometry,actividad=10000000)
+
 
