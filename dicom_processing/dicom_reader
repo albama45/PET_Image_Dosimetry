@@ -1,1 +1,207 @@
+#libraries
 
+!pip install pydicom
+!pip install SimpleITK
+import os
+import numpy as np
+import pydicom
+import matplotlib.pyplot as plt
+import sys
+import glob
+import pandas as pd
+
+import pickle
+from google.colab import files
+from scipy.ndimage import convolve
+
+----------------------------------------------------
+
+#Charging DICOM files:
+
+uploaded = files.upload() #abre un desplegable para subir el fichero (también se puede subir a la interfaz manualmente)
+
+#subir: DatosPET.zip, Datos CT.zip, Kernel_2.1 (si se quiere tardar menos, no subir CT)
+
+!unzip /content/DatosPET.zip #descomprimir fichero (revisar que los nombres del archivo subido y el del código coincidan, modificando lo necesario)
+
+---------------------------------------------------------
+
+#Extracting the image
+
+#defino una función genérica para obtener una estructura 3D que contenga los datos píxel de la tomografía completa (una "imagen volumétrica del cuerpo del paciente")
+
+def obtencion_body(ruta):
+
+
+  archivos_nombre = [f for f in os.listdir(ruta) if os.path.isfile(os.path.join(ruta, f))]
+  archivos_nombre.sort()
+  #print(archivos_nombre) #archivos_nombre es una lista del nombre de los ficheros en la carpeta Datos! ordenados numéricamente!!
+
+  archivos = []
+  archivos = [pydicom.dcmread(os.path.join(ruta, nombre)) for nombre in archivos_nombre] #archivos contiene los ficheros DICOM!! con toda su info
+
+  thickness = []
+  locations = []
+
+  for i in range(len(archivos)):
+
+    locations.append(archivos[i].SliceLocation)
+    thickness.append(archivos[i].SliceThickness)
+
+  locations_ordenado = sorted(locations, reverse=True)          
+  indices_orden = sorted(range(len(locations)), key=lambda i: locations[i], reverse=True)
+
+  thickness_ordenada = [thickness[i] for i in indices_orden]
+
+  archivos_orden = [archivos[i] for i in indices_orden]  #coloco según coordenadas en el eje z
+  archivos_orden = archivos_orden[::-1]
+
+  dx = archivos[0].PixelSpacing[0]
+  dy = archivos[0].PixelSpacing[1]  
+  dz = archivos[0].SliceThickness
+
+  v_size = [dx, dy, dz]
+
+  # print(locations)
+  # print(thickness)
+  # print(archivos)
+  #creo un body vacío:
+
+  img_shape = list(archivos[0].pixel_array.shape) # matriz i j
+  img_shape.append(len(archivos)) #añado una tercera coordenada, k, que es tan larga como imagenes hay en archivos (z en realidad será k*thickness(k))
+
+  #print(img_shape)
+  body = np.zeros(img_shape)
+
+  #relleno
+  for i, s in enumerate(archivos):     #i es el índice, osea lo que equivale a j en img3d; s es el elemento, osea mi ds de antes
+      img2d = s.pixel_array
+      body[:, :, i] = img2d            # todas las filas y columnas, para la posición k= i. Es decir, asigno la slice a su posición en el objeto 3D
+  return body, v_size, thickness_ordenada, locations_ordenado, archivos
+
+
+
+#Utilizo la función para obtener body de los datos PET
+
+ruta1 = "/content/DatosPET/"
+[body, v_size, thickness_ordenada, locations_ordenado, archivos] = obtencion_body(ruta1)
+
+
+#Utilizo la función para obtener body de los datos CT (opcional a ejecutar, sólo si que quiere visualizar la imagen CT)
+
+ruta2 = "/content/DatosCT/"
+[body2, v_size2, thickness_ordenada2, locations_ordenado2, archivos2]  = obtencion_body(ruta2)
+
+
+--------------------------------------------------------------------------------
+
+
+#Visualising the image
+
+
+#Defino una función para mostrar imágenes
+def visualizar(body, v_size, unitsx, unitsy): #body es la "imagen volumétrica que quiero mostrar", v_size es el tamaño del vóxel de imagen, unitx y unity permiten adaptar las unidades de los ejes.
+  dx = v_size[0]
+  dy = v_size[1]
+  dz = v_size[2]
+
+  pixel_spacing = [dx, dy]
+  slice_thickness = dz
+
+  nx, ny, nz = body.shape
+
+  if unitsx == 'voxel':
+    plt.figure()
+    z_mid = nz // 2
+    plt.imshow(np.rot90(body[:, :, z_mid],0),
+              cmap='viridis',
+              origin='lower')
+    plt.xlabel(f"x ({unitsx})")
+    plt.ylabel(f"y ({unitsx})")
+    plt.title("Plano XY (axial)")
+    plt.colorbar(label=f"{unitsy}")
+    plt.show()
+
+    plt.figure()
+    y_mid = ny // 2
+    plt.imshow(np.rot90(body[:, y_mid, :], 1),
+              cmap='viridis',
+              origin='lower',
+              aspect='auto')
+    plt.xlabel(f"y ({unitsx})")
+    plt.ylabel(f"z ({unitsx})")
+    plt.title("Plano YZ (sagital)")
+    plt.colorbar(label=f"{unitsy}")
+    plt.show()
+
+    plt.figure()
+    x_mid = nx // 2
+    plt.imshow(np.rot90(body[x_mid, :, :], 1),
+           cmap='viridis',
+           origin='lower',
+           aspect='auto')
+    plt.xlabel(f"x ({unitsx})")
+    plt.ylabel(f"z ({unitsx})")
+    plt.title("Plano XZ (coronal)")
+    plt.colorbar(label=f"{unitsy}")
+    plt.show()
+
+  elif unitsx == 'cm':
+    plt.figure()
+    z_mid = nz // 2
+    extent_xy = [
+        0, nx * 0.1*pixel_spacing[0],
+        0, ny * 0.1*pixel_spacing[1]
+    ]
+    plt.imshow(np.rot90(body[:, :, z_mid], 0),
+            cmap='viridis',
+            extent=extent_xy,
+            origin='lower')
+    plt.xlabel(f"x ({unitsx})")
+    plt.ylabel(f"y ({unitsx})")
+    plt.title("Plano XY (axial)")
+    plt.colorbar(label=f"{unitsy}")
+    plt.show()
+
+    plt.figure()
+    y_mid = ny // 2
+    extent_xz = [
+        0, nx * 0.1*pixel_spacing[0],
+        0, nz * 0.1*slice_thickness
+    ]
+    print(extent_xz)
+    plt.imshow(np.rot90(body[:, y_mid, :], 1),
+            cmap='viridis',
+            extent=extent_xz,
+            origin='lower',
+            aspect='auto')
+    plt.xlabel(f"y ({unitsx})")
+    plt.ylabel(f"z ({unitsx})")
+    plt.title("Plano YZ (sagital)")
+    plt.colorbar(label=f"{unitsy}")
+    plt.show()
+
+    plt.figure()
+    x_mid = nx // 2
+    extent_yz = [
+        0, ny * 0.1*pixel_spacing[1],
+        0, nz * 0.1*slice_thickness
+    ]
+    plt.imshow(np.rot90(body[x_mid, :, :], 1),
+            cmap='viridis',
+            extent=extent_yz,
+            origin='lower',
+            aspect='auto')
+    plt.xlabel(f"x ({unitsx})")
+    plt.ylabel(f"z ({unitsx})")
+    plt.title("Plano XZ (coronal)")
+    plt.colorbar(label=f"{unitsy}")
+    plt.show()
+
+  else:
+    print('error')
+
+
+# muestro los cortes PET antes de pasar a actividad
+
+visualizar(body, v_size, 'cm','intensidad')
