@@ -1,1 +1,142 @@
+#libraries
+
+!pip install pydicom
+!pip install SimpleITK
+import os
+import numpy as np
+import pydicom
+import matplotlib.pyplot as plt
+import sys
+import glob
+import pandas as pd
+
+import pickle
+from google.colab import files
+from scipy.ndimage import convolve
+
+----------------------------------------------------
+
+
+
+#Obtención de la actividad en Bq/ml. Reescalo el objeto "Body"
+
+img_shape = body.shape
+
+Activity = np.zeros(img_shape) # defino un objeto vacío del tamaño de body
+
+#relleno
+for i, s in enumerate(archivos):     #i es el índice, osea lo que equivale a j en img3d; s es el elemento, osea mi ds de antes
+    A2d = s.pixel_array * s.RescaleSlope + s.RescaleIntercept #calculamos la actividad de cada rodaja
+    Activity[:, :, i] = A2d            # todas las filas y columnas, para la posición k= i. Guardo la actividad de cada slice en su posición correspondiente en body
+
+
+-------------------------------------------------------
+#Conversion from Activity (Bq/ml) to SUV:
+
+#Defino una función para pasar el tiempo de formato DICOM , por ejemplo 1325 (13h 25min) a s
+
+def dicom_time_to_seconds(t):
+    t = str(t).split('.')[0]   # viene como '134745.484000'
+    t = t.zfill(6)             # asegura 6 dígitos
+    h = int(t[0:2])
+    m = int(t[2:4])
+    s = int(t[4:6]) #separo los strings de dos en dos
+    return h*3600 + m*60 + s
+
+
+#paso a SUV los valores de actividad:
+
+#1 extraigo los datos del fichero
+
+
+seq = archivos[0].RadiopharmaceuticalInformationSequence
+actividad_inyectada = seq[0].RadionuclideTotalDose
+print(actividad_inyectada) #en Bq
+peso = 72.6 *10**3 #g
+
+#2 paso de actividad inyectada a actividad en el momento de toma de imagen(actividad inicial): 
+
+aux=0
+#series_time = np.zeros(len(archivos))
+acq_time = np.zeros(len(archivos)) #momento toma de imagen
+#inj_time = np.zeros(len(archivos)) #momento de inyección
+
+for i in archivos:  #itero y saco el
+
+  #series_time[aux] = dicom_time_to_seconds(i.SeriesTime)
+  acq_time[aux] = dicom_time_to_seconds(i.AcquisitionTime)
+  aux = aux +1
+
+print(acq_time)
+start = dicom_time_to_seconds(115120) #al final he metido a mano este valor porque no encontraba el comando
+
+At = acq_time - start
+#print(At)
+
+half_life = 6586.2
+
+actividad_inicial = np.zeros(len(archivos))
+Activity_SUV = np.zeros(img_shape)
+
+#3 normalizo la imagen dividiendo entre actividad inicial/masa paciente(peso):
+for i in range(len(archivos)):
+  actividad_inicial[i] = actividad_inyectada*np.exp(-At[i]*np.log(2)/half_life)
+  Activity_SUV[:, :, i] = Activity[:, :, i]/(actividad_inicial[i]/peso)
+
+#print(actividad_inicial)
+
+
+-----------------------------------------------------------
+
+#Slider that allows to visualize the activity image:
+
+#Esta celda muestra la actividad en un visor, de forma que se puede explorar de forma manual el cuerpo del paciente
+
+from ipywidgets import interact, IntSlider
+
+def visor_coronal(vol):
+    xmax = vol.shape[0] - 1
+
+    def mostrar(x):
+        plt.figure(figsize=(6,6))
+        plt.imshow(vol[x, :, :], cmap='viridis')
+        plt.title(f"Plano coronal - x = {x}")
+        plt.xlabel("z (voxel)")
+        plt.ylabel("y (voxel)")
+        plt.colorbar(label="Intensidad")
+        plt.show()
+
+    interact(mostrar, x=IntSlider(min=0, max=xmax, step=1, value=xmax//2))
+
+def visor_sagital(vol):
+    ymax = vol.shape[1] - 1
+
+    def mostrar(y):
+        plt.figure(figsize=(6,6))
+        plt.imshow(vol[:, y, :], cmap='viridis', aspect='auto')
+        plt.title(f"Plano sagital - y = {y}")
+        plt.xlabel("z (voxel)")
+        plt.ylabel("x (voxel)")
+        plt.colorbar(label="Intensidad")
+        plt.show()
+
+    interact(mostrar, y=IntSlider(min=0, max=ymax, step=1, value=ymax//2))
+
+def visor_axial(vol):
+    zmax = vol.shape[2] - 1
+
+    def mostrar(z):
+        plt.figure(figsize=(6,6))
+        plt.imshow(vol[:, :, z], cmap='viridis', aspect='auto')
+        plt.title(f"Plano axial - z  = {z}")
+        plt.xlabel("x (voxel)")
+        plt.ylabel("y (voxel)")
+        plt.colorbar(label="Intensidad")
+        plt.show()
+
+    interact(mostrar, z=IntSlider(min=0, max=zmax, step=1, value=zmax//2))
+
+visor_coronal(Activity_SUV)
+visor_sagital(Activity_SUV)
+visor_axial(Activity_SUV)
 
