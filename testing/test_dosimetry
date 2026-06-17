@@ -1,1 +1,103 @@
 
+#Checking the convolution process: function that plots 1D profiles
+#Comprobación de convolución: perfiles eje x y eje z de la actividad y la dosis.
+
+#vector 1D plano xz horizontar y vertical, a la altura de la vejiga, para ver la intensidad antes y después de convolucionar
+#en esta nueva imagen me interesa para la vejiga: plano z-x a z 250 y x -60
+
+def plot_profiles(A, D, y0, x0=None, z0=None):
+    # Asume A.shape == (nx, ny, nz)
+    nx, ny, nz = A.shape
+    assert A.shape == D.shape, "A y D deben tener la misma shape"
+    assert 0 <= y0 < ny
+
+    if x0 is None:
+        x0 = nx // 2
+    if z0 is None:
+        z0 = nz // 2
+
+    # 1) Perfil horizontal en el plano xz (y fijo, z fijo): varía x
+    A_x = A[:, y0, z0]
+    D_x = D[:, y0, z0]
+
+
+
+    # 2) Perfil vertical en el mismo plano (y fijo, x fijo): varía z
+    A_z = A[x0, y0, :]
+    D_z = D[x0, y0, :]
+
+
+
+    return A_x, D_x, A_z, D_z
+
+------------------------------------------
+
+#Extracting dose values in specific regions: (bladder and brain)
+
+#bladder:
+
+# tamaños de voxel (mm)
+vx, vy, vz = v_size
+
+# selección de región (vejiga)
+zoom_Dx = D_x[40:80]*10**3  #selecciona los vóxeles a mano
+zoom_Dz = D_z[230:260]*10**3
+
+# ejes en mm (sin centrar)
+x_axis = np.arange(40, 80) * vx
+z_axis = np.arange(230, 260) * vz
+
+# ---- PERFIL EN X ----
+plt.figure(figsize=(6,4))
+plt.plot(x_axis, zoom_Dx, linewidth=2)
+
+plt.title("Perfil de dosis en la vejiga (eje x)")
+plt.xlabel("x (mm)")
+plt.ylabel("Dosis (mGy)")
+
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+
+# ---- PERFIL EN Z ----
+plt.figure(figsize=(6,4))
+plt.plot(z_axis, zoom_Dz, linewidth=2)
+
+plt.title("Perfil de dosis en la vejiga (eje z)")
+plt.xlabel("z (mm)")
+plt.ylabel("Dosis (mGy)")
+
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+
+#brain:
+
+# tamaños de voxel (mm)
+vx, vy, vz = v_size
+
+# selección de región (cerebro)
+zoom_Dz = D_z[0:60]*10**3 #introducir a mano los vóxeles
+
+# eje en mm (sin centrar)
+z_axis = np.arange(0, 60) * vz
+
+# ---- PERFIL EN Z ----
+plt.figure(figsize=(6,4))
+plt.plot(z_axis, zoom_Dz, linewidth=2)
+
+plt.title("Perfil de dosis en el cerebro (eje z)")
+plt.xlabel("z (mm)")
+plt.ylabel("Dosis (mGy)")
+
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+
+
+# ---- DOSIS MEDIA ----
+dosis_cerebro = np.mean(zoom_Dz)
+print(f"Dosis media (cerebro) = {dosis_cerebro:.3e}")
+
