@@ -3,8 +3,9 @@
 # PET Dosimetry Analysis using LegPy Simulations
 
 ## Overview
+This repository contains materials related to my Bachelor's thesis in Physics at Universidad Complutense de Madrid.
 
-This project performs dosimetric analysis of medical images (PET/CT) using LegPy (Monte Carlo based algorithm) simulations for photon dose deposition. It processes DICOM files, simulates radiation transport, and calculates absorbed dose distributions in tissue.
+The thesis focus on dosimetric analysis of medical images (PET/CT) using LegPy (Monte Carlo based algorithm) simulations for photon dose deposition. It processes DICOM files, simulates radiation transport, and calculates absorbed dose distributions in tissue.
 
 ## Project Structure
 
